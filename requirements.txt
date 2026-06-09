@@ -1,0 +1,21 @@
+# StudyWise dependencies
+# Install with: pip install -r requirements.txt
+
+streamlit>=1.35.0
+streamlit-extras>=0.4.0
+
+# LLM — Groq (direct SDK, no langchain needed)
+groq>=0.9.0
+
+# Embeddings via HuggingFace Inference API
+huggingface-hub>=0.23.0
+
+# Vector search
+faiss-cpu>=1.7.4
+
+# PDF parsing
+pypdf>=4.0.0
+
+# Numerics
+numpy>=1.26.0
+
