@@ -1,7 +1,8 @@
 """
 ui/sidebar.py
 ─────────────
-Sidebar for StudyWise.
+Sidebar: API key inputs, file uploader, document stats, stack info.
+Call render_sidebar() from app.py — writes to st.session_state only.
 """
 
 import streamlit as st
@@ -9,360 +10,166 @@ from core.document import index_document, build_qa_chain
 
 
 DEFAULTS = {
-    "vectorstore": None,
-    "qa_chain": None,
-    "doc_name": None,
-    "doc_chunks": 0,
-    "doc_pages": 0,
-    "chat_history": [],
+    "vectorstore":    None,
+    "qa_chain":       None,
+    "doc_name":       None,
+    "doc_chunks":     0,
+    "doc_pages":      0,
+    "chat_history":   [],
     "quiz_questions": [],
-    "quiz_answers": {},
+    "quiz_answers":   {},
     "quiz_submitted": False,
-    "flashcards": [],
-    "fc_index": 0,
-    "fc_flipped": False,
-    "summary": None,
-    "key_concepts": [],
-    "groq_key": "",
-    "hf_token": "",
+    "flashcards":     [],
+    "fc_index":       0,
+    "fc_flipped":     False,
+    "summary":        None,
+    "key_concepts":   [],
+    "groq_key":       "",
+    "hf_token":       "",
 }
 
 
 def init_session_state():
+    """Initialise all session-state keys with defaults."""
     for k, v in DEFAULTS.items():
         if k not in st.session_state:
             st.session_state[k] = v
 
 
 def _reset_tool_states():
-
-    keys = [
-        "chat_history",
-        "quiz_questions",
-        "quiz_answers",
-        "quiz_submitted",
-        "flashcards",
-        "fc_index",
-        "fc_flipped",
-        "summary",
-        "key_concepts",
+    tool_keys = [
+        "chat_history", "quiz_questions", "quiz_answers",
+        "quiz_submitted", "flashcards", "fc_index", "fc_flipped",
+        "summary", "key_concepts",
     ]
-
-    for k in keys:
+    for k in tool_keys:
         st.session_state[k] = DEFAULTS[k]
 
 
-def _status(ok, ok_msg, warn_msg):
-
-    if ok:
-
-        st.markdown(
-            f"""
-<div style="
-background:#d8f8e7;
-padding:8px;
-border-radius:8px;
-font-size:13px;
-color:#1d6d48;
-margin-bottom:6px;
-">
-{ok_msg}
-</div>
-""",
-            unsafe_allow_html=True,
-        )
-
-    else:
-
-        st.markdown(
-            f"""
-<div style="
-background:#fff3cf;
-padding:8px;
-border-radius:8px;
-font-size:13px;
-color:#8a6b22;
-margin-bottom:6px;
-">
-{warn_msg}
-</div>
-""",
-            unsafe_allow_html=True,
-        )
+def _status(ok: bool, ok_msg: str, warn_msg: str):
+    colour, msg = ("#10b981", ok_msg) if ok else ("#f59e0b", warn_msg)
+    st.markdown(
+        f'<p style="color:{colour};font-size:0.8rem;">{msg}</p>',
+        unsafe_allow_html=True,
+    )
 
 
 def render_sidebar():
-
     with st.sidebar:
 
-        # ------------------------------------------------
-
+        # ── Brand ──────────────────────────────────────────────────────────
         st.markdown(
-            """
-<div style="text-align:center;padding-top:8px;padding-bottom:10px;">
-
-<div style="
-font-family:'Playfair Display',serif;
-font-size:34px;
-font-weight:700;
-color:#C93638;
-">
-
-Study<span style="color:white;">Wise</span>
-
-</div>
-
-<div style="
-font-size:13px;
-color:white;
-margin-top:3px;
-">
-
-Your AI Study Companion
-
-</div>
-
-</div>
-""",
+            '<p class="brand">Study<span class="brand-dot">.</span>Wise</p>',
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            '<p style="font-size:0.78rem;color:#475569;'
+            'margin-top:-4px;margin-bottom:1.2rem;">AI Study Companion</p>',
             unsafe_allow_html=True,
         )
 
-        st.markdown("---")
-
-        # ------------------------------------------------
-
-        st.markdown("### 🔑 Groq API")
-
-        st.caption(
-            "Get a free API key from https://console.groq.com"
-        )
-
+        # ── Groq API Key ───────────────────────────────────────────────────
+        st.markdown("#### 🔑 Groq API Key")
+        st.caption("Free at [console.groq.com](https://console.groq.com)")
         groq_key = st.text_input(
-            "Groq",
+            "Groq API Key",
             type="password",
-            value=st.session_state.groq_key,
             placeholder="gsk_...",
+            value=st.session_state.groq_key,
             label_visibility="collapsed",
         )
-
         if groq_key:
-
             st.session_state.groq_key = groq_key
-
-            _status(True, "✓ API key saved", "")
-
+            _status(True, "✓ Groq key saved", "")
         else:
+            _status(False, "", "↑ Required for Q&A, Quiz, Summary, Flashcards")
 
-            _status(False, "", "Groq key required")
+        st.divider()
 
-        st.markdown("")
-
-        # ------------------------------------------------
-
-        st.markdown("### HuggingFace")
-
+        # ── HuggingFace Token ──────────────────────────────────────────────
+        st.markdown("#### HuggingFace Token")
         st.caption(
-            "Required for document embeddings"
+            "Free at [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens) "
+            "— needed for embeddings"
         )
-
-        hf = st.text_input(
-            "HF",
+        hf_token = st.text_input(
+            "HuggingFace Token",
             type="password",
-            value=st.session_state.hf_token,
             placeholder="hf_...",
+            value=st.session_state.hf_token,
             label_visibility="collapsed",
         )
-
-        if hf:
-
-            st.session_state.hf_token = hf
-
-            _status(True, "✓ Token saved", "")
-
+        if hf_token:
+            st.session_state.hf_token = hf_token
+            _status(True, "✓ HF token saved", "")
         else:
+            _status(False, "", "↑ Required for document indexing")
 
-            _status(False, "", "HF token required")
+        st.divider()
 
-        st.markdown("---")
-
-        # ------------------------------------------------
-
-        st.markdown("### 📄 Upload Document")
-
+        # ── File uploader ──────────────────────────────────────────────────
+        st.markdown("#### 📄 Your Document")
         uploaded = st.file_uploader(
-            "Upload",
+            "Upload PDF or TXT",
             type=["pdf", "txt"],
             label_visibility="collapsed",
         )
 
-        ready = (
-            st.session_state.groq_key
-            and st.session_state.hf_token
-        )
+        both_keys = st.session_state.groq_key and st.session_state.hf_token
 
-        if uploaded and ready:
-
-            label = (
-                "Re-index"
-                if st.session_state.doc_name
-                else " Load Document"
-            )
-
-            if st.button(label, use_container_width=True):
-
-                with st.spinner("Processing..."):
-
-                    vs, chunks, pages = index_document(
-                        uploaded,
-                        st.session_state.hf_token,
+        if uploaded and both_keys:
+            btn_label = "🔄 Re-index" if st.session_state.doc_name else "📥 Load & Index"
+            if st.button(btn_label, use_container_width=True):
+                with st.spinner("Indexing document…"):
+                    vs, n_chunks, n_pages = index_document(
+                        uploaded, st.session_state.hf_token
                     )
-
                     st.session_state.vectorstore = vs
-
-                    st.session_state.qa_chain = build_qa_chain(
-                        vs,
-                        st.session_state.groq_key,
+                    st.session_state.qa_chain    = build_qa_chain(
+                        vs, st.session_state.groq_key
                     )
-
-                    st.session_state.doc_name = uploaded.name
-
-                    st.session_state.doc_chunks = chunks
-
-                    st.session_state.doc_pages = pages
-
+                    st.session_state.doc_name   = uploaded.name
+                    st.session_state.doc_chunks = n_chunks
+                    st.session_state.doc_pages  = n_pages
                     _reset_tool_states()
-
-                st.success("✨ Document indexed!")
+                st.success("Ready!")
 
         elif uploaded and not st.session_state.groq_key:
-
-            st.info("Enter Groq key first.")
-
+            st.info("Enter your Groq API key first.")
         elif uploaded and not st.session_state.hf_token:
+            st.info("Enter your HuggingFace token first.")
 
-            st.info("Enter HuggingFace token first.")
-
-        # ------------------------------------------------
-
+        # ── Document stats ─────────────────────────────────────────────────
         if st.session_state.doc_name:
-
-            st.markdown("---")
-
-            st.markdown("### 📊 Document")
-
+            st.divider()
+            st.markdown("#### 📊 Document Stats")
             c1, c2 = st.columns(2)
-
             with c1:
-
                 st.markdown(
-                    f"""
-<div style="
-background:#FFDE96;
-padding:14px;
-border-radius:14px;
-text-align:center;
-">
-
-<div style="
-font-size:28px;
-font-weight:700;
-color:#C93638;
-">
-
-{st.session_state.doc_pages}
-
-</div>
-
-<div style="font-size:12px;">
-Pages
-</div>
-
-</div>
-""",
+                    f'<div class="stat-chip">'
+                    f'<div class="stat-num">{st.session_state.doc_pages}</div>'
+                    f'<div class="stat-lbl">pages</div></div>',
                     unsafe_allow_html=True,
                 )
-
             with c2:
-
                 st.markdown(
-                    f"""
-<div style="
-background:#FA855A;
-padding:14px;
-border-radius:14px;
-text-align:center;
-color:white;
-">
-
-<div style="
-font-size:28px;
-font-weight:700;
-">
-
-{st.session_state.doc_chunks}
-
-</div>
-
-<div style="font-size:12px;">
-Chunks
-</div>
-
-</div>
-""",
+                    f'<div class="stat-chip">'
+                    f'<div class="stat-num">{st.session_state.doc_chunks}</div>'
+                    f'<div class="stat-lbl">chunks</div></div>',
                     unsafe_allow_html=True,
                 )
-
-            st.markdown("")
-
             st.markdown(
-                f"""
-<div style="
-background:white;
-padding:10px;
-border-radius:10px;
-font-size:13px;
-word-break:break-word;
-">
-
-📄 {st.session_state.doc_name}
-
-</div>
-""",
+                f'<p style="font-size:0.78rem;color:#475569;'
+                f'margin-top:0.5rem;word-break:break-all;">📄 {st.session_state.doc_name}</p>',
                 unsafe_allow_html=True,
             )
 
-        # ------------------------------------------------
-
-        st.markdown("---")
-
+        # ── Stack info ─────────────────────────────────────────────────────
+        st.divider()
         st.markdown(
-            """
-<div style="
-text-align:center;
-font-size:13px;
-line-height:1.8;
-color:white;
-">
-
-Built with: 
-
-<br>
-
-HuggingFace
-
-<br>
-
-FAISS
-
-<br>
-
-Groq Llama 3
-
-<br>
-
-Streamlit
-
-</div>
-""",
+            '<p style="font-size:0.75rem;color:#475569;line-height:1.6;">'
+            '<b style="color:#64748b;">Built with:</b><br>'
+            "HuggingFace · FAISS<br>"
+            "Groq LLaMA-3 · Streamlit</p>",
             unsafe_allow_html=True,
         )
