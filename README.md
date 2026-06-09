@@ -3,6 +3,7 @@
 > Upload any PDF. Walk out with mastery.
 
 StudyWise transforms static study material (textbook chapters, lecture slides, past papers) into a **fully interactive study session** using Retrieval-Augmented Generation, HuggingFace embeddings, and an LLM backbone.
+<img width="1911" height="830" alt="image" src="https://github.com/user-attachments/assets/7aee8a56-f6b9-466c-b23b-24b041148b8f" />
 
 ---
 
