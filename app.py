@@ -68,7 +68,7 @@ else:
         "💬  Ask",
         "🧠  Quiz Me",
         "📝  Summarise",
-        "🃏  Flashcards",
+        "📄  Flashcards",
     ])
 
     with tab_ask:
