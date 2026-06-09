@@ -103,9 +103,19 @@ Open http://localhost:8501, enter your Groq key in the sidebar, upload a PDF, an
 
 ```
 studywise/
-├── app.py            # Main Streamlit application (all 4 tools)
-├── requirements.txt  # Python dependencies
-└── README.md         # This file
+├── app.py                  ← entry point  →  streamlit run app.py
+├── requirements.txt
+├── core/
+│   └── document.py         ← indexing, embeddings, QA chain, LLM utils
+├── ui/
+│   ├── styles.py           ← all CSS (inject_css)
+│   ├── sidebar.py          ← API key, file upload, stats
+│   └── landing.py          ← onboarding screen
+└── tools/
+    ├── ask.py              ← Tab 1: RAG Q&A
+    ├── quiz.py             ← Tab 2: MCQ quiz
+    ├── summarise.py        ← Tab 3: structured summary
+    └── flashcards.py       ← Tab 4: flip-card review
 ```
 
 ---
